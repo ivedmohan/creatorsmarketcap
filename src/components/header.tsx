@@ -1,10 +1,24 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { WalletConnect } from "@/components/wallet-connect"
+import { useAccount } from "wagmi"
 import Image from "next/image"
 
 export function Header() {
+  const { address, isConnected } = useAccount()
+  const router = useRouter()
+
+  const handleProfileClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (isConnected && address) {
+      router.push(`/profile/${address}`)
+    } else {
+      // Show connect wallet prompt or redirect to connect
+      router.push('/?connect=true')
+    }
+  }
   return (
     <header className="border-b border-border/50 glass sticky top-0 z-50">
       <div className="container mx-auto px-4">
@@ -26,12 +40,12 @@ export function Header() {
             >
               Trending
             </Link>
-            <Link
-              href="/profile"
+            <button
+              onClick={handleProfileClick}
               className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
             >
-              Profile
-            </Link>
+              {isConnected ? "My Profile" : "Profile"}
+            </button>
           </nav>
 
           <WalletConnect />

@@ -130,16 +130,13 @@ export class ZoraClient {
                     const swap: any = {
                         activityType: node.activityType, // "BUY" or "SELL"
                         coinAmount: node.coinAmount,
-                        ethAmount: node.ethAmount, // ETH amount involved in swap
                         senderAddress: node.senderAddress,
                         blockTimestamp: node.blockTimestamp,
                         transactionHash: node.transactionHash,
                     }
                     
-                    // Calculate price per coin (ETH/coin)
-                    const coinAmt = parseFloat(node.coinAmount || '0')
-                    const ethAmt = parseFloat(node.ethAmount || '0')
-                    swap.pricePerCoin = coinAmt > 0 ? ethAmt / coinAmt : 0
+                    // Note: ethAmount not available in Zora SDK response
+                    // Price calculation would need to be done differently
                     
                     return swap
                 })
@@ -209,7 +206,7 @@ export class ZoraClient {
                     displayName: profile.displayName,
                     bio: profile.bio,
                     website: profile.website,
-                    avatar: profile.avatar?.medium,
+                    avatar: profile.avatar?.medium || profile.avatar?.small,
                     walletAddress: profile.publicWallet?.walletAddress,
                     socialAccounts: profile.socialAccounts,
                     linkedWallets: profile.linkedWallets?.edges?.map(edge => ({
