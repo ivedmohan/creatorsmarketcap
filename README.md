@@ -331,4 +331,4 @@ MIT License - see LICENSE file for details
 
 **Status**: Backend Complete ✅ | Frontend In Progress 🚧 | Production Ready 🔄
 
-Built with ❤️ for the Base ecosystem and creator economy.
+Built with ❤️ for the Base ecosystem and creator economy.# creatorsmarketcap

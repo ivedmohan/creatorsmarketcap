@@ -17,14 +17,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(cachedTrending.data)
     }
 
-    // Fetch trending coins (combination of top gainers and high volume)
-    const trendingCoins = await zoraUtils.getTrendingCoins(count)
+    // Fetch trending coins (use top gainers as trending)
+    let trendingCoins
+    try {
+      trendingCoins = await zoraUtils.getTrendingCoins(count)
+    } catch (error) {
+      console.log('getTrendingCoins failed, using top gainers as fallback')
+      // Fallback to top gainers
+      const { zoraClient } = await import('@/lib/zora')
+      const result = await zoraClient.getTopGainers(count)
+      trendingCoins = result.coins || []
+    }
 
-    const response: ApiResponse<{ coins: typeof trendingCoins }> = {
+    const response: ApiResponse<typeof trendingCoins> = {
       success: true,
-      data: {
-        coins: trendingCoins
-      }
+      data: trendingCoins
     }
 
     // Cache the result

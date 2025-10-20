@@ -115,7 +115,7 @@ export class ZoraClient {
     }
 
     // Get coin swap activities (trading history)
-    async getCoinSwaps(address: string, first: number = 10, after?: string) {
+    async getCoinSwaps(address: string, first: number = 50, after?: string) {
         try {
             const response = await getCoinSwaps({
                 address,
@@ -125,13 +125,24 @@ export class ZoraClient {
             })
 
             if (response.data?.zora20Token?.swapActivities) {
-                const swaps = response.data.zora20Token.swapActivities.edges.map(({ node }) => ({
-                    activityType: node.activityType, // "BUY" or "SELL"
-                    coinAmount: node.coinAmount,
-                    senderAddress: node.senderAddress,
-                    blockTimestamp: node.blockTimestamp,
-                    transactionHash: node.transactionHash
-                }))
+                const swaps = response.data.zora20Token.swapActivities.edges.map(({ node }) => {
+                    // Extract all available fields from the swap
+                    const swap: any = {
+                        activityType: node.activityType, // "BUY" or "SELL"
+                        coinAmount: node.coinAmount,
+                        ethAmount: node.ethAmount, // ETH amount involved in swap
+                        senderAddress: node.senderAddress,
+                        blockTimestamp: node.blockTimestamp,
+                        transactionHash: node.transactionHash,
+                    }
+                    
+                    // Calculate price per coin (ETH/coin)
+                    const coinAmt = parseFloat(node.coinAmount || '0')
+                    const ethAmt = parseFloat(node.ethAmount || '0')
+                    swap.pricePerCoin = coinAmt > 0 ? ethAmt / coinAmt : 0
+                    
+                    return swap
+                })
 
                 return {
                     swaps,
@@ -307,16 +318,41 @@ export class ZoraClient {
 
     async getMostValuable(count: number = 20, after?: string): Promise<{ coins: CreatorCoin[], hasNextPage: boolean, endCursor?: string }> {
         try {
-            const response = await getCoinsMostValuable({ count, after })
-
-            const coins = response.data?.exploreList?.edges?.map(({ node }) =>
-                transformZoraCoin(node)
-            ) || []
+            // Zora SDK limits to ~20 per request, so we need to fetch multiple pages
+            const maxPerRequest = 20
+            const pagesToFetch = Math.ceil(count / maxPerRequest)
+            
+            let allCoins: CreatorCoin[] = []
+            let currentCursor = after
+            let finalHasNextPage = false
+            let finalEndCursor = undefined
+            
+            for (let i = 0; i < pagesToFetch; i++) {
+                const response = await getCoinsMostValuable({ 
+                    count: maxPerRequest, 
+                    after: currentCursor 
+                })
+                
+                const pageCoins = response.data?.exploreList?.edges?.map(({ node }) =>
+                    transformZoraCoin(node)
+                ) || []
+                
+                allCoins = [...allCoins, ...pageCoins]
+                finalHasNextPage = response.data?.exploreList?.pageInfo?.hasNextPage || false
+                finalEndCursor = response.data?.exploreList?.pageInfo?.endCursor
+                
+                // Stop if no more pages or we have enough coins
+                if (!finalHasNextPage || allCoins.length >= count) {
+                    break
+                }
+                
+                currentCursor = finalEndCursor
+            }
 
             return {
-                coins,
-                hasNextPage: response.data?.exploreList?.pageInfo?.hasNextPage || false,
-                endCursor: response.data?.exploreList?.pageInfo?.endCursor
+                coins: allCoins.slice(0, count), // Trim to exact count requested
+                hasNextPage: finalHasNextPage,
+                endCursor: finalEndCursor
             }
         } catch (error) {
             console.error('Error fetching most valuable coins:', error)
@@ -433,14 +469,14 @@ export const zoraUtils = {
             const [coin, holders, swaps, comments] = await Promise.all([
                 zoraClient.getCoin(address),
                 zoraClient.getCoinHolders(address, 10),
-                zoraClient.getCoinSwaps(address, 10),
+                zoraClient.getCoinSwaps(address, 50), // Fetch more swaps for better chart data
                 zoraClient.getCoinComments(address, 5)
             ])
 
             return {
                 coin,
                 holders: holders.holders,
-                recentSwaps: swaps.swaps,
+                recentSwaps: swaps.swaps, // Chart will look for this
                 comments: comments.comments
             }
         } catch (error) {

@@ -94,3 +94,34 @@ export interface OwnershipClaim {
   verified: boolean
   claimedAt: Date
 }
+
+// Type aliases for backward compatibility
+export type Coin = CreatorCoin
+export type Profile = UserProfile
+
+// Additional types for API
+export interface Transaction {
+  id: string
+  type: 'buy' | 'sell' | 'transfer'
+  from: string
+  to: string
+  amount: number
+  price: number
+  timestamp: number
+  txHash: string
+}
+
+export interface Holder {
+  address: string
+  balance: number
+  value: number
+  percentage: number
+}
+
+export interface PaginationParams {
+  page: number
+  limit: number
+  total: number
+  hasNextPage?: boolean
+  endCursor?: string
+}

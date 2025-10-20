@@ -67,6 +67,9 @@ export async function GET(request: NextRequest) {
         result = await zoraClient.getMostValuable(limit, after)
     }
 
+    // Log how many coins were actually returned
+    console.log(`API /coins: Requested ${limit} coins, got ${result.coins.length} coins from Zora SDK`)
+
     // Filter by search term if provided
     let filteredCoins = result.coins
     if (search) {
@@ -74,7 +77,8 @@ export async function GET(request: NextRequest) {
       filteredCoins = result.coins.filter(coin => 
         coin.name.toLowerCase().includes(searchTerm) ||
         coin.symbol.toLowerCase().includes(searchTerm) ||
-        coin.creatorAddress.toLowerCase().includes(searchTerm)
+        coin.creatorAddress.toLowerCase().includes(searchTerm) ||
+        coin.contractAddress.toLowerCase().includes(searchTerm) // Also search by contract address
       )
     }
 
