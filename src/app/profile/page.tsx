@@ -1,7 +1,6 @@
 "use client"
 
 import { use } from "react"
-import { useAccount } from "wagmi"
 import { ConnectWalletPrompt } from "@/components/connect-wallet-prompt"
 import { UserProfile } from "@/components/user-profile"
 import { UserCoins } from "@/components/user-coins"
@@ -12,7 +11,6 @@ interface ProfilePageProps {
 }
 
 export default function ProfilePage({ params }: ProfilePageProps) {
-  const { address: connectedAddress, isConnected } = useAccount()
   const resolvedParams = use(params)
   
   // If no address in params, show connect wallet prompt

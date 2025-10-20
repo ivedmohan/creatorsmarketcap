@@ -210,7 +210,7 @@ export function CoinsTable({ sortBy = "mostValuable", searchTerm = "" }: CoinsTa
       {searchTerm ? (
         <div className="text-center">
           <p className="text-sm text-muted-foreground">
-            Found {coins.length} coin{coins.length !== 1 ? 's' : ''} matching "{searchTerm}"
+            Found {coins.length} coin{coins.length !== 1 ? 's' : ''} matching &quot;{searchTerm}&quot;
           </p>
         </div>
       ) : (

@@ -5,8 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { TrustScoreBadge } from "@/components/trust-score-badge"
-import { ExternalLink, Twitter, Github, Globe, Copy, Loader2 } from "lucide-react"
+import { Twitter, Github, Globe, Copy } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 
 interface ZoraProfile {
