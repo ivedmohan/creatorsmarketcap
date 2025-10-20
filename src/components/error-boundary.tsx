@@ -1,39 +1,63 @@
 "use client"
 
-import React from 'react'
+import { Component, type ReactNode } from "react"
+import { Button } from "@/components/ui/button"
 
-interface ErrorBoundaryState {
+interface Props {
+  children: ReactNode
+  fallback?: ReactNode
+}
+
+interface State {
   hasError: boolean
   error?: Error
 }
 
-interface ErrorBoundaryProps {
-  children: React.ReactNode
-  fallback?: React.ComponentType<{ error: Error; reset: () => void }>
-}
-
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
     super(props)
     this.state = { hasError: false }
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo)
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo)
   }
 
   render() {
     if (this.state.hasError) {
-      const FallbackComponent = this.props.fallback || DefaultErrorFallback
+      if (this.props.fallback) {
+        return this.props.fallback
+      }
+
       return (
-        <FallbackComponent
-          error={this.state.error!}
-          reset={() => this.setState({ hasError: false, error: undefined })}
-        />
+        <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+          <div className="border border-red-500/20 rounded-lg p-6 max-w-md w-full bg-card">
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold text-red-500 flex items-center gap-2">
+                <span>⚠️</span>
+                Something went wrong
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                We encountered an error while loading this page. Please try again.
+              </p>
+              {this.state.error && (
+                <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto">
+                  {this.state.error.message}
+                </pre>
+              )}
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="w-full"
+              >
+                Reload Page
+              </Button>
+            </div>
+          </div>
+        </div>
       )
     }
 
@@ -41,17 +65,4 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 }
 
-function DefaultErrorFallback({ error, reset }: { error: Error; reset: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[200px] p-8 text-center">
-      <h2 className="text-xl font-semibold text-destructive mb-4">Something went wrong</h2>
-      <p className="text-muted-foreground mb-4">{error.message}</p>
-      <button
-        onClick={reset}
-        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-      >
-        Try again
-      </button>
-    </div>
-  )
-}
+

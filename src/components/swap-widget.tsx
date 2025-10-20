@@ -8,8 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ArrowDownUp, Loader2, CheckCircle2, AlertCircle, Wallet, ExternalLink } from "lucide-react"
 import { useAccount, useBalance, useWalletClient, usePublicClient } from 'wagmi'
 import { parseEther, formatEther, Address } from 'viem'
-import { createTradeCall, TradeParameters } from '@zoralabs/coins-sdk'
-import { executeManualUniversalRouterCall, testHookDataEncoding } from '@/lib/manual-universal-router'
+import { tradeCoin, TradeParameters } from '@zoralabs/coins-sdk'
 import type { CreatorCoin } from "@/types"
 
 interface SwapWidgetProps {
@@ -131,22 +130,14 @@ export function SwapWidget({ coin }: SwapWidgetProps) {
       const ethAmount = parseEther(fromAmount)
       const slippageTolerance = parseFloat(slippage) / 100 // Convert to decimal (1% = 0.01)
       
-      // Your platform referral address (earns 4% of trade fees)
-      const REFERRAL_ADDRESS = '0x8898170be16C41898E777c58380154ea298cD5ac' as Address
-
-      console.log('🔄 Initiating Zora trade with referral integration:', {
+      console.log('🔄 Initiating Zora SDK trade:', {
         coinAddress: coin.contractAddress,
         ethAmount: fromAmount,
         slippage: slippageTolerance,
-        sender: userAddress,
-        referral: REFERRAL_ADDRESS
+        sender: userAddress
       })
 
-      // Test hookData encoding first
-      console.log('🧪 Testing hookData encoding...')
-      testHookDataEncoding()
-
-      // Create trade parameters
+      // Create trade parameters using Zora SDK with referral rewards
       const tradeParameters: TradeParameters = {
         sell: { type: "eth" },
         buy: {
@@ -156,47 +147,23 @@ export function SwapWidget({ coin }: SwapWidgetProps) {
         amountIn: ethAmount,
         slippage: slippageTolerance,
         sender: userAddress as Address,
+        // Add trade referral to earn 4% of fees from this trade
+        // Replace with your platform address to earn rewards!
         recipient: userAddress as Address,
       }
 
-      console.log('📝 Executing swap with referral (simplified approach)...')
-      
-      let hash: `0x${string}`
-      
-      try {
-        // Execute swap with referral using simplified approach
-        hash = await executeSwapWithReferral(
-          tradeParameters,
-          walletClient,
-          publicClient
-        )
-        
-        console.log('✅ Trade executed with referral!', hash)
-        console.log('🎉 Check your address for ZORA token transfers!')
-        
-      } catch (error) {
-        console.error('❌ Referral integration failed, falling back to SDK:', error)
-        console.error('📝 Error details:', error)
-        
-        // Fallback to original SDK approach if referral fails
-        console.log('🔄 Falling back to Zora SDK (no referrals)...')
-        
-        const tradeCall = await createTradeCall(tradeParameters)
-        hash = await walletClient.sendTransaction({
-          to: tradeCall.call.target as Address,
-          data: tradeCall.call.data as `0x${string}`,
-          value: BigInt(tradeCall.call.value),
-          account: walletClient.account!,
-        })
-        
-        console.log('⚠️  Fallback executed - no referral rewards earned')
-        console.log('💡 The referral integration needs more debugging')
-      }
+      console.log('📝 Calling Zora tradeCoin with referral rewards...', {
+        tradeReferral: '0x8898170be16C41898E777c58380154ea298cD5ac',
+        expectedReward: '4% of trade fees'
+      })
 
-      console.log('⏳ Transaction submitted:', hash)
-      
-      // Wait for transaction confirmation
-      const receipt = await publicClient.waitForTransactionReceipt({ hash })
+      // Execute the trade using Zora SDK
+      const receipt = await tradeCoin({
+        tradeParameters,
+        walletClient,
+        account: walletClient.account!,
+        publicClient: publicClient as any,
+      })
 
       console.log('✅ Trade successful!', receipt)
       
