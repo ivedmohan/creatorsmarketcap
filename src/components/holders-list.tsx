@@ -30,10 +30,30 @@ export function HoldersList({ address }: HoldersListProps) {
         const data = await response.json()
         
         if (data.success && data.data?.holders) {
-          // Take the top 5 holders
-          const topHolders = data.data.holders.slice(0, 5)
+          // Debug: Log the actual data structure
+          console.log('Holders data structure:', data.data.holders)
+          
+          // Calculate total supply for percentage calculation
+          const totalSupply = data.data.holders.reduce((sum: number, holder: any) => {
+            return sum + parseFloat(holder.balance || '0')
+          }, 0)
+          
+          // Take the top 5 holders and calculate percentages
+          const topHolders = data.data.holders.slice(0, 5).map((holder: any) => {
+            const balance = parseFloat(holder.balance || '0')
+            const percentage = totalSupply > 0 ? (balance / totalSupply) * 100 : 0
+            
+            return {
+              address: holder.address || holder.ownerAddress || 'Unknown',
+              balance: holder.balance || '0',
+              percentage: percentage
+            }
+          })
+          
+          console.log('Processed holders:', topHolders)
           setHolders(topHolders)
         } else {
+          console.log('No holders data found:', data)
           setHolders([])
         }
       } catch (err) {
@@ -127,7 +147,7 @@ export function HoldersList({ address }: HoldersListProps) {
                   <p className="text-xs text-muted-foreground">{formattedBalance} tokens</p>
                 </div>
               </div>
-              <span className="text-sm font-semibold">{holder.percentage.toFixed(2)}%</span>
+              <span className="text-sm font-semibold">{(holder.percentage || 0).toFixed(2)}%</span>
             </div>
           )
         })}
