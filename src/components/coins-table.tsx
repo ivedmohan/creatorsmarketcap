@@ -17,6 +17,7 @@ interface CoinsTableProps {
 
 export function CoinsTable({ sortBy = "mostValuable", searchTerm = "" }: CoinsTableProps) {
   const [coins, setCoins] = useState<CreatorCoin[]>([])
+  const [developerCoin, setDeveloperCoin] = useState<CreatorCoin | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
@@ -24,6 +25,22 @@ export function CoinsTable({ sortBy = "mostValuable", searchTerm = "" }: CoinsTa
   const [hasNextPage, setHasNextPage] = useState(false)
   const [cursors, setCursors] = useState<{ [page: number]: string }>({}) // Track cursors for each page
   const limit = 20
+
+  // Fetch developer coin
+  useEffect(() => {
+    const fetchDeveloperCoin = async () => {
+      try {
+        const response = await fetch('/api/coins/0x42C04Ec942A42673360C314d3d1b4aE74a71ef74')
+        const data = await response.json()
+        if (data.success && data.data?.coin) {
+          setDeveloperCoin(data.data.coin)
+        }
+      } catch (error) {
+        console.error('Failed to fetch developer coin:', error)
+      }
+    }
+    fetchDeveloperCoin()
+  }, [])
 
   // Reset page to 1 when search term or sort changes
   useEffect(() => {
@@ -138,10 +155,63 @@ export function CoinsTable({ sortBy = "mostValuable", searchTerm = "" }: CoinsTa
             </TableRow>
           </TableHeader>
           <TableBody>
+            {/* Developer coin at the top (only on first page and no search) */}
+            {!searchTerm && page === 1 && developerCoin && (
+              <TableRow key="developer-coin" className="border-border/50 hover:bg-white/5 transition-colors bg-primary/5">
+                <TableCell className="font-medium text-muted-foreground">
+                  <span className="bg-primary/20 text-primary px-2 py-1 rounded text-xs font-semibold">DEV</span>
+                </TableCell>
+                <TableCell>
+                  <Link
+                    href={`/coin/${developerCoin.contractAddress}`}
+                    className="flex items-center gap-3 hover:text-primary transition-colors"
+                  >
+                    <Avatar className="w-10 h-10">
+                      <AvatarImage src={developerCoin.metadata?.image || "/placeholder.svg"} alt={developerCoin.name} />
+                      <AvatarFallback>{developerCoin.symbol}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-semibold flex items-center gap-2">
+                        {developerCoin.name}
+                        <span className="bg-primary/20 text-primary px-2 py-0.5 rounded text-xs font-semibold">@zorothebuilder</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">{developerCoin.symbol}</div>
+                    </div>
+                  </Link>
+                </TableCell>
+                <TableCell className="text-right font-semibold">
+                  ${developerCoin.currentPrice.toFixed(6)}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className={`flex items-center justify-end gap-1 ${developerCoin.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {developerCoin.priceChange24h >= 0 ? (
+                      <TrendingUp className="w-4 h-4" />
+                    ) : (
+                      <TrendingDown className="w-4 h-4" />
+                    )}
+                    <span className="font-semibold">
+                      {developerCoin.priceChange24h >= 0 ? '+' : ''}{developerCoin.priceChange24h.toFixed(2)}%
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right font-semibold">
+                  ${(developerCoin.marketCap / 1_000_000).toFixed(2)}M
+                </TableCell>
+                <TableCell className="text-right">
+                  ${(developerCoin.volume24h / 1_000_000).toFixed(2)}M
+                </TableCell>
+                <TableCell className="text-right">
+                  {developerCoin.holders.toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  <TrustScoreBadge score={95} />
+                </TableCell>
+              </TableRow>
+            )}
             {coins.map((coin, index) => (
               <TableRow key={coin.id} className="border-border/50 hover:bg-white/5 transition-colors">
                 <TableCell className="font-medium text-muted-foreground">
-                  {searchTerm ? index + 1 : (page - 1) * limit + index + 1}
+                  {searchTerm ? index + 1 : (page - 1) * limit + index + 1 + (developerCoin && !searchTerm && page === 1 ? 1 : 0)}
                 </TableCell>
                 <TableCell>
                   <Link

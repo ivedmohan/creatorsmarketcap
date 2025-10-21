@@ -57,14 +57,32 @@ export function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Developer</h4>
             <div className="text-sm">
-              <p className="text-muted-foreground">Built for the Base ecosystem</p>
-              <p className="text-muted-foreground mt-1">Creator coins dashboard</p>
+              <p className="text-muted-foreground">Built by @zorothebuilder</p>
+              <div className="flex items-center gap-2 mt-2">
+                <a 
+                  href="https://x.com/zorothebuilder" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:text-primary/80 transition-colors"
+                >
+                  Twitter
+                </a>
+                <span className="text-muted-foreground">•</span>
+                <a 
+                  href="https://github.com/ivedmohan" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:text-primary/80 transition-colors"
+                >
+                  GitHub
+                </a>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="border-t border-border/50 mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>© 2025 CreatorsMarketCap. Built for the Base ecosystem.</p>
+          <p>© 2025 CreatorsMarketCap. Built by @zorothebuilder for the Base ecosystem.</p>
         </div>
       </div>
     </footer>
