@@ -1,49 +1,26 @@
 "use client"
 
-import { useEffect, useState } from 'react'
-import { io, Socket } from 'socket.io-client'
-
-// Global Socket.IO client instance
-let socket: Socket | null = null
-
-const getSocket = () => {
-  if (!socket) {
-    socket = io(process.env.NODE_ENV === 'production' 
-      ? process.env.NEXTAUTH_URL || 'https://creatorsmarketcap.vercel.app'
-      : 'http://localhost:3000', {
-      path: '/api/socketio',
-      transports: ['websocket', 'polling']
-    })
-
-    socket.on('connect', () => {
-      console.log('🔌 WebSocket connected:', socket?.id)
-    })
-
-    socket.on('disconnect', () => {
-      console.log('🔌 WebSocket disconnected')
-    })
-
-    socket.on('connect_error', (error) => {
-      console.error('🔌 WebSocket connection error:', error)
-    })
-  }
-  return socket
-}
+import { useEffect, useState, useRef } from 'react'
 
 interface CoinUpdate {
-  type: 'initial' | 'price-update' | 'new-trade'
   coinAddress: string
   timestamp: number
-  price?: number
-  priceChange24h?: number
-  volume24h?: number
-  trade?: {
-    activityType: 'BUY' | 'SELL'
-    coinAmount: string
-    senderAddress: string
-    blockTimestamp: number
-    transactionHash: string
+  coin: {
+    currentPrice: number
+    priceChange24h: number
+    volume24h: number
+    marketCap: number
+    holders: number
   }
+  recentSwaps: any[]
+  latestPrice: number
+  priceHistory: Array<{
+    timestamp: number
+    price: number
+    volume: number
+    type: 'BUY' | 'SELL'
+  }>
+  ethPrice: number
 }
 
 interface MarketUpdate {
@@ -51,242 +28,226 @@ interface MarketUpdate {
   type: 'market-update'
   data: {
     trendingCoins: any[]
-    marketStats: {
-      totalMarketCap: number
-      totalVolume: number
-      totalCoins: number
+    totalCoins: number
+  }
+}
+
+interface UseWebSocketOptions {
+  autoConnect?: boolean
+  reconnectAttempts?: number
+  reconnectDelay?: number
+}
+
+// Mock WebSocket implementation for development
+class MockWebSocket {
+  private url: string
+  private listeners: Map<string, ((...args: any[]) => void)[]> = new Map()
+  private isConnected = false
+  private reconnectCount = 0
+  private maxReconnects = 5
+  private reconnectDelay = 1000
+
+  constructor(url: string) {
+    this.url = url
+    this.connect()
+  }
+
+  private connect() {
+    // Simulate connection delay
+    setTimeout(() => {
+      this.isConnected = true
+      this.emit('connect')
+      console.log('🔌 Mock WebSocket connected')
+    }, 1000)
+  }
+
+  on(event: string, callback: (...args: any[]) => void) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, [])
+    }
+    this.listeners.get(event)!.push(callback)
+  }
+
+  off(event: string, callback: (...args: any[]) => void) {
+    const listeners = this.listeners.get(event)
+    if (listeners) {
+      const index = listeners.indexOf(callback)
+      if (index > -1) {
+        listeners.splice(index, 1)
+      }
     }
   }
-}
 
-interface ActivityUpdate {
-  type: 'new-activity'
-  coinAddress: string
-  activity: {
-    activityType: 'BUY' | 'SELL'
-    coinAmount: string
-    senderAddress: string
-    blockTimestamp: number
-    transactionHash: string
+  emit(event: string, ...args: any[]) {
+    const listeners = this.listeners.get(event)
+    if (listeners) {
+      listeners.forEach(callback => callback(...args))
+    }
   }
-  timestamp: number
-}
 
-interface ChartUpdate {
-  type: 'chart-update'
-  coinAddress: string
-  pricePoint: {
-    timestamp: number
-    price: number
-    volume: number
-    type: 'BUY' | 'SELL'
+  send(data: any) {
+    console.log('📤 Mock WebSocket send:', data)
+    // Simulate server response
+    setTimeout(() => {
+      if (data === 'subscribe-coin') {
+        this.emit('coin-update', {
+          coinAddress: 'mock-address',
+          timestamp: Date.now(),
+          coin: {
+            currentPrice: Math.random() * 0.001 + 0.0001,
+            priceChange24h: (Math.random() - 0.5) * 20,
+            volume24h: Math.random() * 1000000,
+            marketCap: Math.random() * 10000000,
+            holders: Math.floor(Math.random() * 1000) + 100
+          },
+          recentSwaps: [],
+          latestPrice: Math.random() * 0.001 + 0.0001,
+          priceHistory: [],
+          ethPrice: 3500
+        })
+      }
+    }, 500)
   }
-  timestamp: number
+
+  close() {
+    this.isConnected = false
+    this.emit('disconnect')
+    console.log('🔌 Mock WebSocket disconnected')
+  }
+
+  get connected() {
+    return this.isConnected
+  }
 }
 
-export function useWebSocket() {
+export function useWebSocket(options: UseWebSocketOptions = {}) {
+  const {
+    autoConnect = true,
+    reconnectAttempts = 5,
+    reconnectDelay = 1000
+  } = options
+
+  const [socket, setSocket] = useState<MockWebSocket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting')
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const ws = getSocket()
+    if (autoConnect) {
+      const newSocket = new MockWebSocket('ws://localhost:3000')
+      
+      newSocket.on('connect', () => {
+        setIsConnected(true)
+        setError(null)
+      })
 
-    const handleConnect = () => {
-      setIsConnected(true)
-      setConnectionStatus('connected')
+      newSocket.on('disconnect', () => {
+        setIsConnected(false)
+      })
+
+      newSocket.on('connect_error', (err: any) => {
+        setError(err.message)
+      })
+
+      setSocket(newSocket)
+
+      return () => {
+        newSocket.close()
+      }
     }
+  }, [autoConnect, reconnectAttempts, reconnectDelay])
 
-    const handleDisconnect = () => {
-      setIsConnected(false)
-      setConnectionStatus('disconnected')
-    }
-
-    const handleError = () => {
-      setConnectionStatus('error')
-    }
-
-    ws.on('connect', handleConnect)
-    ws.on('disconnect', handleDisconnect)
-    ws.on('connect_error', handleError)
-
-    return () => {
-      ws.off('connect', handleConnect)
-      ws.off('disconnect', handleDisconnect)
-      ws.off('connect_error', handleError)
-    }
-  }, [])
-
-  return {
-    isConnected,
-    connectionStatus,
-    socket: getSocket()
-  }
+  return { socket, isConnected, error }
 }
 
 export function useCoinUpdates(coinAddress: string | null) {
-  const [updates, setUpdates] = useState<CoinUpdate[]>([])
-  const [isLive, setIsLive] = useState(false)
+  const { socket, isConnected } = useWebSocket()
+  const [coinData, setCoinData] = useState<CoinUpdate | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    if (!coinAddress) return
+    if (!socket || !coinAddress || !isConnected) return
 
-    const ws = getSocket()
-    setIsLive(true)
-
-    const handleCoinUpdate = (update: CoinUpdate) => {
-      console.log('📊 Received coin update:', update)
-      setUpdates(prev => [...prev.slice(-9), update]) // Keep last 10 updates
-    }
+    console.log(`📊 Subscribing to updates for ${coinAddress}`)
+    setIsLoading(true)
 
     // Subscribe to coin updates
-    ws.emit('subscribe-coin', coinAddress)
-    ws.on('coin-update', handleCoinUpdate)
+    socket.emit('subscribe-coin', coinAddress)
 
-    return () => {
-      ws.emit('unsubscribe-coin', coinAddress)
-      ws.off('coin-update', handleCoinUpdate)
-      setIsLive(false)
-    }
-  }, [coinAddress])
-
-  return { updates, isLive }
-}
-
-export function useRealtimePrice(coinAddress: string | null) {
-  const [price, setPrice] = useState<number | null>(null)
-  const [priceChange24h, setPriceChange24h] = useState<number | null>(null)
-  const [volume24h, setVolume24h] = useState<number | null>(null)
-  const [isLive, setIsLive] = useState(false)
-
-  useEffect(() => {
-    if (!coinAddress) return
-
-    const ws = getSocket()
-    setIsLive(true)
-
-    const handleCoinUpdate = (update: CoinUpdate) => {
-      if (update.type === 'price-update' && update.price !== undefined) {
-        setPrice(update.price)
-        setPriceChange24h(update.priceChange24h || 0)
-        setVolume24h(update.volume24h || 0)
+    // Listen for coin updates
+    const handleCoinUpdate = (data: CoinUpdate) => {
+      if (data.coinAddress === coinAddress) {
+        console.log(`📈 Received update for ${coinAddress}:`, data.latestPrice)
+        setCoinData(data)
+        setIsLoading(false)
       }
     }
 
-    ws.emit('subscribe-coin', coinAddress)
-    ws.on('coin-update', handleCoinUpdate)
+    socket.on('coin-update', handleCoinUpdate)
 
     return () => {
-      ws.emit('unsubscribe-coin', coinAddress)
-      ws.off('coin-update', handleCoinUpdate)
-      setIsLive(false)
+      console.log(`📊 Unsubscribing from ${coinAddress}`)
+      socket.emit('unsubscribe-coin', coinAddress)
+      socket.off('coin-update', handleCoinUpdate)
     }
-  }, [coinAddress])
+  }, [socket, coinAddress, isConnected])
 
-  return { price, priceChange24h, volume24h, isLive }
-}
-
-export function useRealtimeChart(coinAddress: string | null) {
-  const [pricePoints, setPricePoints] = useState<Array<{
-    timestamp: number
-    price: number
-    volume: number
-    type: 'BUY' | 'SELL'
-  }>>([])
-  const [isLive, setIsLive] = useState(false)
-
-  useEffect(() => {
-    if (!coinAddress) return
-
-    const ws = getSocket()
-    setIsLive(true)
-
-    const handleCoinUpdate = (update: CoinUpdate) => {
-      if (update.type === 'price-update' && update.price !== undefined) {
-        const newPoint = {
-          timestamp: update.timestamp,
-          price: update.price,
-          volume: update.volume24h || 0,
-          type: 'BUY' as const
-        }
-        setPricePoints(prev => [...prev.slice(-99), newPoint]) // Keep last 100 points
-      }
-    }
-
-    ws.emit('subscribe-coin', coinAddress)
-    ws.on('coin-update', handleCoinUpdate)
-
-    return () => {
-      ws.emit('unsubscribe-coin', coinAddress)
-      ws.off('coin-update', handleCoinUpdate)
-      setIsLive(false)
-    }
-  }, [coinAddress])
-
-  return { pricePoints, isLive }
-}
-
-export function useRealtimeActivity(coinAddress: string | null) {
-  const [activities, setActivities] = useState<Array<{
-    activityType: 'BUY' | 'SELL'
-    coinAmount: string
-    senderAddress: string
-    blockTimestamp: number
-    transactionHash: string
-  }>>([])
-  const [isLive, setIsLive] = useState(false)
-
-  useEffect(() => {
-    if (!coinAddress) return
-
-    const ws = getSocket()
-    setIsLive(true)
-
-    const handleCoinUpdate = (update: CoinUpdate) => {
-      if (update.type === 'new-trade' && update.trade) {
-        setActivities(prev => [update.trade!, ...prev.slice(0, 9)]) // Keep last 10 activities
-      }
-    }
-
-    ws.emit('subscribe-coin', coinAddress)
-    ws.on('coin-update', handleCoinUpdate)
-
-    return () => {
-      ws.emit('unsubscribe-coin', coinAddress)
-      ws.off('coin-update', handleCoinUpdate)
-      setIsLive(false)
-    }
-  }, [coinAddress])
-
-  return { activities, isLive }
+  return { coinData, isLoading }
 }
 
 export function useMarketUpdates() {
+  const { socket, isConnected } = useWebSocket()
   const [marketData, setMarketData] = useState<MarketUpdate | null>(null)
-  const [isLive, setIsLive] = useState(false)
 
   useEffect(() => {
-    const ws = getSocket()
-    setIsLive(true)
+    if (!socket || !isConnected) return
 
-    const handleMarketUpdate = (update: MarketUpdate) => {
-      setMarketData(update)
+    const handleMarketUpdate = (data: MarketUpdate) => {
+      console.log('📈 Received market update:', data)
+      setMarketData(data)
     }
 
-    ws.on('market-update', handleMarketUpdate)
+    socket.on('market-update', handleMarketUpdate)
 
     return () => {
-      ws.off('market-update', handleMarketUpdate)
-      setIsLive(false)
+      socket.off('market-update', handleMarketUpdate)
     }
-  }, [])
+  }, [socket, isConnected])
 
-  return { marketData, isLive }
+  return { marketData }
 }
 
-// Cleanup function for when the app unmounts
-export function cleanupWebSocket() {
-  if (socket) {
-    socket.disconnect()
-    socket = null
+export function useRealtimePrice(coinAddress: string | null) {
+  const { coinData } = useCoinUpdates(coinAddress)
+  
+  return {
+    currentPrice: coinData?.latestPrice || 0,
+    priceChange24h: coinData?.coin.priceChange24h || 0,
+    volume24h: coinData?.coin.volume24h || 0,
+    marketCap: coinData?.coin.marketCap || 0,
+    holders: coinData?.coin.holders || 0,
+    ethPrice: coinData?.ethPrice || 3500,
+    lastUpdate: coinData?.timestamp || 0,
+    isLive: !!coinData
+  }
+}
+
+export function useRealtimeChart(coinAddress: string | null) {
+  const { coinData } = useCoinUpdates(coinAddress)
+  
+  return {
+    priceHistory: coinData?.priceHistory || [],
+    recentSwaps: coinData?.recentSwaps || [],
+    lastUpdate: coinData?.timestamp || 0,
+    isLive: !!coinData
+  }
+}
+
+export function useRealtimeActivity(coinAddress: string | null) {
+  const { coinData } = useCoinUpdates(coinAddress)
+  
+  return {
+    recentSwaps: coinData?.recentSwaps || [],
+    lastUpdate: coinData?.timestamp || 0,
+    isLive: !!coinData
   }
 }

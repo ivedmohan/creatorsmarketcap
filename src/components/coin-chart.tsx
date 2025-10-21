@@ -52,8 +52,8 @@ export function CoinChart({ address }: CoinChartProps) {
   const [isClient, setIsClient] = useState(false)
   
   // Real-time data hooks
-  const { isConnected, connectionStatus } = useWebSocket()
-  const { pricePoints: realtimePricePoints, isLive } = useRealtimeChart(address)
+  const { isConnected } = useWebSocket()
+  const { priceHistory, recentSwaps, lastUpdate, isLive } = useRealtimeChart(address)
 
   // Ensure we're on the client side to avoid hydration issues
   useEffect(() => {
@@ -62,13 +62,20 @@ export function CoinChart({ address }: CoinChartProps) {
 
   // Update chart data when real-time data changes
   useEffect(() => {
-    if (realtimePricePoints.length > 0) {
-      console.log(`📈 Updated chart with ${realtimePricePoints.length} real-time price points`)
-      setChartData(realtimePricePoints)
+    if (priceHistory.length > 0) {
+      const chartPoints = priceHistory.map((point: any) => ({
+        timestamp: point.timestamp,
+        price: point.price,
+        volume: point.volume,
+        type: point.type
+      }))
+      
+      console.log(`📈 Updated chart with ${chartPoints.length} real-time price points`)
+      setChartData(chartPoints)
       setLoading(false)
       setError(null)
     }
-  }, [realtimePricePoints])
+  }, [priceHistory])
 
   // Fallback to API if no real-time data
   useEffect(() => {
