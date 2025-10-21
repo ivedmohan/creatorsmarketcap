@@ -25,18 +25,18 @@ export function ActivityFeed({ address }: ActivityFeedProps) {
   const [error, setError] = useState<string | null>(null)
 
   // Real-time data hooks
-  const { isConnected } = useWebSocket()
-  const { recentSwaps, lastUpdate, isLive } = useRealtimeActivity(address)
+  const { isConnected, connectionStatus } = useWebSocket()
+  const { activities: realtimeActivities, isLive } = useRealtimeActivity(address)
 
   // Update activities when real-time data changes
   useEffect(() => {
-    if (recentSwaps.length > 0) {
-      console.log(`📊 Updated activity feed with ${recentSwaps.length} real-time swaps`)
-      setActivities(recentSwaps.slice(0, 10)) // Take most recent 10
+    if (realtimeActivities.length > 0) {
+      console.log(`📊 Updated activity feed with ${realtimeActivities.length} real-time activities`)
+      setActivities(realtimeActivities.slice(0, 10)) // Take most recent 10
       setLoading(false)
       setError(null)
     }
-  }, [recentSwaps])
+  }, [realtimeActivities])
 
   // Fallback to API if no real-time data
   useEffect(() => {
