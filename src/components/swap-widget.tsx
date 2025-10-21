@@ -9,6 +9,7 @@ import { ArrowDownUp, Loader2, CheckCircle2, AlertCircle, Wallet, ExternalLink }
 import { useAccount, useBalance, useWalletClient, usePublicClient } from 'wagmi'
 import { parseEther, formatEther, Address } from 'viem'
 import { tradeCoin, TradeParameters } from '@zoralabs/coins-sdk'
+import { Skeleton } from "@/components/ui/skeleton"
 import type { CreatorCoin } from "@/types"
 
 interface SwapWidgetProps {
@@ -27,6 +28,7 @@ export function SwapWidget({ coin }: SwapWidgetProps) {
   const [isSuccess, setIsSuccess] = useState(false)
   const [txHash, setTxHash] = useState<string | null>(null)
   const [ethPrice, setEthPrice] = useState<number>(3500) // Default fallback
+  const [isInitializing, setIsInitializing] = useState(true)
 
   // Get user's ETH balance
   const { data: balance } = useBalance({
@@ -50,6 +52,8 @@ export function SwapWidget({ coin }: SwapWidgetProps) {
       } catch (error) {
         console.warn('Failed to fetch ETH price, using fallback:', error)
         // Keep fallback price
+      } finally {
+        setIsInitializing(false)
       }
     }
 
@@ -218,6 +222,38 @@ export function SwapWidget({ coin }: SwapWidgetProps) {
     isPending || 
     isConfirming ||
     (balance && parseFloat(fromAmount) > parseFloat(formatEther(balance.value)))
+
+  // Show loading state while initializing
+  if (isInitializing) {
+    return (
+      <Card className="glass-card border-white/10 rounded-2xl overflow-hidden">
+        <CardHeader className="bg-gradient-to-br from-primary/10 to-chart-1/10 border-b border-white/10">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-6 w-32" />
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+            <div className="flex justify-center">
+              <Skeleton className="h-8 w-8 rounded-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          </div>
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-14 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card className="glass-card border-white/10 rounded-2xl overflow-hidden">

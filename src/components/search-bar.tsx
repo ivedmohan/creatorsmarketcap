@@ -4,14 +4,16 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Search } from "lucide-react"
 
 interface SearchBarProps {
   onSearchChange?: (search: string) => void
   onSortChange?: (sortBy: string) => void
+  loading?: boolean
 }
 
-export function SearchBar({ onSearchChange, onSortChange }: SearchBarProps) {
+export function SearchBar({ onSearchChange, onSortChange, loading = false }: SearchBarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [search, setSearch] = useState(searchParams?.get("search") || "")
@@ -77,6 +79,17 @@ export function SearchBar({ onSearchChange, onSortChange }: SearchBarProps) {
       onSortChange(sortBy)
     }
   }, [sortBy, onSortChange])
+
+  if (loading) {
+    return (
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Skeleton className="h-12 w-full rounded-xl" />
+        </div>
+        <Skeleton className="h-12 w-48 rounded-xl" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col md:flex-row gap-4">

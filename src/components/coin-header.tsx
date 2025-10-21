@@ -2,15 +2,47 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import type { CreatorCoin } from "@/types"
 import { TrendingUp, TrendingDown } from "lucide-react"
 
 interface CoinHeaderProps {
   address: string
-  coin: CreatorCoin
+  coin: CreatorCoin | null
+  loading?: boolean
 }
 
-export function CoinHeader({ address, coin }: CoinHeaderProps) {
+export function CoinHeader({ address, coin, loading = false }: CoinHeaderProps) {
+  if (loading || !coin) {
+    return (
+      <div className="glass-card rounded-2xl p-8">
+        <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
+          <Skeleton className="w-24 h-24 rounded-2xl" />
+          <div className="flex-1 space-y-4">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-64" />
+              <Skeleton className="h-6 w-20" />
+            </div>
+            <Skeleton className="h-6 w-32" />
+            <div className="flex flex-wrap gap-4">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-12" />
+                <Skeleton className="h-8 w-24" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-8 w-20" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-8 w-28" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="glass-card rounded-2xl p-8">
       <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">

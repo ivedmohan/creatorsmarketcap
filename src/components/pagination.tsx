@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
 interface PaginationProps {
@@ -8,9 +9,21 @@ interface PaginationProps {
   totalPages: number
   onPageChange: (page: number) => void
   hasNextPage?: boolean
+  loading?: boolean
 }
 
-export function Pagination({ currentPage, totalPages, onPageChange, hasNextPage }: PaginationProps) {
+export function Pagination({ currentPage, totalPages, onPageChange, hasNextPage, loading = false }: PaginationProps) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center gap-2">
+        <Skeleton className="h-10 w-10" />
+        <Skeleton className="h-10 w-10" />
+        <Skeleton className="h-10 w-10" />
+        <Skeleton className="h-10 w-10" />
+        <Skeleton className="h-10 w-10" />
+      </div>
+    )
+  }
   // Show pages 1-5 if we don't know total (rely on hasNextPage)
   const showPages = Math.min(5, totalPages || 5)
   const pages = Array.from({ length: showPages }, (_, i) => {
