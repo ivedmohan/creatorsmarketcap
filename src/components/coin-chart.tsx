@@ -49,10 +49,16 @@ export function CoinChart({ address }: CoinChartProps) {
   const [chartData, setChartData] = useState<SwapData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isClient, setIsClient] = useState(false)
   
   // Real-time data hooks
   const { isConnected } = useWebSocket()
   const { priceHistory, recentSwaps, lastUpdate, isLive } = useRealtimeChart(address)
+
+  // Ensure we're on the client side to avoid hydration issues
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   // Update chart data when real-time data changes
   useEffect(() => {
@@ -90,9 +96,10 @@ export function CoinChart({ address }: CoinChartProps) {
               type: point.type
             }))
             
-            console.log(`📈 Loaded ${chartPoints.length} API price points`)
+            console.log(`📈 Loaded ${chartPoints.length} API price points:`, chartPoints)
             setChartData(chartPoints)
           } else {
+            console.log('📈 No price history found in API response:', data)
             setChartData([])
           }
         } catch (err) {
@@ -128,7 +135,7 @@ export function CoinChart({ address }: CoinChartProps) {
         callbacks: {
           label: (context) => {
             const price = context.parsed.y
-            return `Price: ${price?.toFixed(8) || '0.00000000'} ETH`
+            return `Price: $${price?.toFixed(6) || '0.000000'} USD`
           }
         }
       }
@@ -156,7 +163,7 @@ export function CoinChart({ address }: CoinChartProps) {
         ticks: {
           color: 'rgba(255, 255, 255, 0.5)',
           callback: (value) => {
-            return typeof value === 'number' ? value.toFixed(8) : value
+            return typeof value === 'number' ? `$${value.toFixed(6)}` : value
           }
         },
         border: {
@@ -179,9 +186,38 @@ export function CoinChart({ address }: CoinChartProps) {
       }
     }
 
-    const labels = chartData.map((swap) => {
+    const labels = chartData.map((swap, index) => {
       const date = new Date(swap.timestamp)
-      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      // Ensure we have a valid date
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid timestamp:', swap.timestamp)
+        return `Point ${index + 1}`
+      }
+      
+      // Use proper timezone-aware formatting
+      const now = new Date()
+      const diffMs = now.getTime() - date.getTime()
+      const diffHours = diffMs / (1000 * 60 * 60)
+      
+      // If data is recent (within 24 hours), show relative time
+      if (diffHours < 24) {
+        if (diffHours < 1) {
+          const diffMins = Math.floor(diffMs / (1000 * 60))
+          return `${diffMins}m ago`
+        } else {
+          const diffHoursRounded = Math.floor(diffHours)
+          return `${diffHoursRounded}h ago`
+        }
+      }
+      
+      // For older data, show date and time
+      return date.toLocaleString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      })
     })
 
     const prices = chartData.map((swap) => swap.price)
@@ -191,7 +227,7 @@ export function CoinChart({ address }: CoinChartProps) {
       labels,
       datasets: [
         {
-          label: 'Price (ETH)',
+          label: 'Price (USD)',
           data: prices,
           borderColor: isPositive ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)',
           backgroundColor: isPositive 
@@ -211,6 +247,27 @@ export function CoinChart({ address }: CoinChartProps) {
   }
 
   if (loading) {
+    return (
+      <Card className="glass-card border-white/10 rounded-2xl">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Price Chart</CardTitle>
+            <div className="flex gap-2">
+              {["24h", "7d", "30d", "1y"].map((tf) => (
+                <Skeleton key={tf} className="h-8 w-12 rounded-full" />
+              ))}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-[300px] w-full rounded-xl" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Don't render chart until we're on the client to avoid hydration issues
+  if (!isClient) {
     return (
       <Card className="glass-card border-white/10 rounded-2xl">
         <CardHeader>

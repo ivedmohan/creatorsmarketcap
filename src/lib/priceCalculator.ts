@@ -72,6 +72,8 @@ export class PriceCalculator {
     swaps: any[],
     coinAddress: string
   ): Promise<PricePoint[]> {
+    console.log(`📊 PriceCalculator: Processing ${swaps.length} swaps for ${coinAddress}`)
+    
     // Sort swaps by timestamp
     const sortedSwaps = swaps.sort((a, b) => {
       const timeA = typeof a.blockTimestamp === 'string' 
@@ -83,6 +85,8 @@ export class PriceCalculator {
       return timeA - timeB
     })
 
+    console.log(`📊 PriceCalculator: Sorted swaps, first swap:`, sortedSwaps[0])
+
     // Track supply over time
     let currentSupply = 0
     const pricePoints: PricePoint[] = []
@@ -91,6 +95,12 @@ export class PriceCalculator {
       const timestamp = typeof swap.blockTimestamp === 'string' 
         ? new Date(swap.blockTimestamp).getTime()
         : swap.blockTimestamp * 1000
+
+      // Validate timestamp
+      if (isNaN(timestamp) || timestamp <= 0) {
+        console.warn('Invalid timestamp in swap:', swap.blockTimestamp)
+        continue
+      }
 
       const coinAmount = parseFloat(swap.coinAmount || '0')
       
@@ -112,6 +122,7 @@ export class PriceCalculator {
       })
     }
 
+    console.log(`📊 PriceCalculator: Generated ${pricePoints.length} price points`)
     return pricePoints
   }
 

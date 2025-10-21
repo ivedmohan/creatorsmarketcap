@@ -51,8 +51,10 @@ export function ActivityFeed({ address }: ActivityFeedProps) {
           
           if (data.success && data.data?.recentSwaps) {
             const recentSwaps = data.data.recentSwaps.slice(0, 10)
+            console.log('📊 Activity feed received swaps:', recentSwaps.length, recentSwaps)
             setActivities(recentSwaps)
           } else {
+            console.log('📊 No recent swaps found in API response:', data)
             setActivities([])
           }
         } catch (err) {

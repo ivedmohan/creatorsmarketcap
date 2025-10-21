@@ -18,6 +18,11 @@ export async function GET(
     const swapData = await zoraClient.getCoinSwaps(resolvedParams.address, 100)
     const swaps = swapData.swaps || []
 
+    console.log(`📊 Price history API: Found ${swaps.length} swaps for ${resolvedParams.address}`)
+    if (swaps.length > 0) {
+      console.log('📊 Sample swap:', swaps[0])
+    }
+
     if (swaps.length === 0) {
       return NextResponse.json({
         success: true,
