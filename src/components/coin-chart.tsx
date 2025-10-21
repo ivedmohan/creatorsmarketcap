@@ -85,26 +85,34 @@ export function CoinChart({ address }: CoinChartProps) {
         setError(null)
         
         try {
-          const response = await fetch(`/api/coins/${address}/price-history?timeframe=${timeframe}`)
-          const data = await response.json()
+          // Try DexScreener first, fallback to our price history API
+          let response = await fetch(`/api/coins/${address}/dexscreener-chart?timeframe=${timeframe}`)
+          let data = await response.json()
+          
+          // If DexScreener fails, fallback to our API
+          if (!data.success || !data.data?.priceHistory) {
+            console.log('📊 DexScreener failed, falling back to price history API')
+            response = await fetch(`/api/coins/${address}/price-history?timeframe=${timeframe}`)
+            data = await response.json()
+          }
           
           if (data.success && data.data?.priceHistory) {
             const chartPoints = data.data.priceHistory.map((point: any) => ({
               timestamp: point.timestamp,
               price: point.price,
-              volume: point.volume,
-              type: point.type
+              volume: point.volume || 0,
+              type: point.type || 'BUY'
             }))
             
-            console.log(`📈 Loaded ${chartPoints.length} API price points:`, chartPoints)
+            console.log(`📈 Loaded ${chartPoints.length} price points from ${data.data.pairAddress ? 'DexScreener' : 'API'}:`, chartPoints)
             setChartData(chartPoints)
           } else {
             console.log('📈 No price history found in API response:', data)
             setChartData([])
           }
         } catch (err) {
-          console.error('Failed to fetch price history:', err)
-          setError('Failed to load price history')
+          console.error('Failed to fetch chart data:', err)
+          setError('Failed to load chart data')
           setChartData([])
         } finally {
           setLoading(false)
@@ -195,7 +203,7 @@ export function CoinChart({ address }: CoinChartProps) {
       }
       
       // Debug: Log the actual timestamp and date
-      console.log(`Chart label ${index}: timestamp=${swap.timestamp}, date=${date.toISOString()}`)
+      console.log(`Chart label ${index}: timestamp=${swap.timestamp}, date=${date.toISOString()}, age=${(Date.now() - swap.timestamp) / 1000}s`)
       
       // Use proper timezone-aware formatting
       const now = new Date()

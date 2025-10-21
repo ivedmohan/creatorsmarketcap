@@ -35,7 +35,7 @@ export async function GET(
     }
 
     // Generate price history from swaps
-          const pricePoints = PriceCalculator.generatePriceHistory(swaps, resolvedParams.address)
+    const pricePoints = PriceCalculator.generatePriceHistory(swaps, resolvedParams.address)
     
     // Fetch ETH price history for USD conversion
     const ethPriceHistory = await PriceCalculator.fetchEthPriceHistory(days)
@@ -53,6 +53,32 @@ export async function GET(
       filteredPoints = usdPricePoints.filter(point => point.timestamp >= weekAgo)
     }
 
+    // Always append a live point using the current coin price so the chart includes "now"
+    try {
+      const origin = new URL(request.url).origin
+      const coinRes = await fetch(`${origin}/api/coins/${resolvedParams.address}`, { cache: 'no-store' })
+      const coinJson = await coinRes.json()
+      const currentPrice = coinJson?.data?.coin?.currentPrice
+      
+      console.log(`📊 Live point: currentPrice=${currentPrice}, filteredPoints.length=${filteredPoints.length}`)
+      
+      if (typeof currentPrice === 'number' && currentPrice > 0) {
+        const nowTs = Date.now()
+        const last = filteredPoints[filteredPoints.length - 1]
+        
+        console.log(`📊 Last point: timestamp=${last?.timestamp}, price=${last?.price}, age=${last ? (nowTs - last.timestamp) / 1000 : 'N/A'}s`)
+        
+        // Always append a live point if we have fewer than 2 points or the last point is older than 1 minute
+        if (filteredPoints.length < 2 || !last || nowTs - last.timestamp > 60 * 1000) {
+          const livePoint = { timestamp: nowTs, price: currentPrice, volume: 0, type: 'BUY' as any }
+          filteredPoints = [...filteredPoints, livePoint]
+          console.log(`📊 Added live point: ${new Date(nowTs).toISOString()}, price=$${currentPrice}`)
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to append live price point:', e)
+    }
+
     console.log(`📈 Generated ${filteredPoints.length} price points from ${swaps.length} swaps`)
 
     return NextResponse.json({
@@ -63,7 +89,7 @@ export async function GET(
         timeframe,
         generatedAt: Date.now()
       }
-    })
+    }, { headers: { 'Cache-Control': 'no-store, no-cache, max-age=0, must-revalidate' } })
 
   } catch (error) {
     console.error('Price history API error:', error)

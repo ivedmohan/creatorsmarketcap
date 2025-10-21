@@ -46,16 +46,28 @@ export function ActivityFeed({ address }: ActivityFeedProps) {
           setLoading(true)
           setError(null)
           
-          const response = await fetch(`/api/coins/${address}?includeDetails=true`)
-          const data = await response.json()
+          // Try DexScreener first, fallback to our API
+          let response = await fetch(`/api/coins/${address}/dexscreener-activity`)
+          let data = await response.json()
           
-          if (data.success && data.data?.recentSwaps) {
-            const recentSwaps = data.data.recentSwaps.slice(0, 10)
-            console.log('📊 Activity feed received swaps:', recentSwaps.length, recentSwaps)
-            setActivities(recentSwaps)
+          // If DexScreener fails, fallback to our API
+          if (!data.success || !data.data?.activities) {
+            console.log('📊 DexScreener activity failed, falling back to API')
+            response = await fetch(`/api/coins/${address}?includeDetails=true`)
+            data = await response.json()
+            
+            if (data.success && data.data?.recentSwaps) {
+              const recentSwaps = data.data.recentSwaps.slice(0, 10)
+              console.log('📊 Activity feed received swaps from API:', recentSwaps.length, recentSwaps)
+              setActivities(recentSwaps)
+            } else {
+              console.log('📊 No recent swaps found in API response:', data)
+              setActivities([])
+            }
           } else {
-            console.log('📊 No recent swaps found in API response:', data)
-            setActivities([])
+            const activities = data.data.activities.slice(0, 10)
+            console.log('📊 Activity feed received activities from DexScreener:', activities.length, activities)
+            setActivities(activities)
           }
         } catch (err) {
           console.error('Failed to fetch activities:', err)
