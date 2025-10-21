@@ -194,6 +194,9 @@ export function CoinChart({ address }: CoinChartProps) {
         return `Point ${index + 1}`
       }
       
+      // Debug: Log the actual timestamp and date
+      console.log(`Chart label ${index}: timestamp=${swap.timestamp}, date=${date.toISOString()}`)
+      
       // Use proper timezone-aware formatting
       const now = new Date()
       const diffMs = now.getTime() - date.getTime()

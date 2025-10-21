@@ -89,9 +89,19 @@ export function ActivityFeed({ address }: ActivityFeedProps) {
 
   const formatAmount = (amount: string) => {
     const num = parseFloat(amount)
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
-    return num.toFixed(2)
+    
+    // Handle very large numbers (like the ones we're seeing)
+    if (num >= 1e18) return `${(num / 1e18).toFixed(1)}Q` // Quintillion
+    if (num >= 1e15) return `${(num / 1e15).toFixed(1)}P` // Quadrillion  
+    if (num >= 1e12) return `${(num / 1e12).toFixed(1)}T` // Trillion
+    if (num >= 1e9) return `${(num / 1e9).toFixed(1)}B`   // Billion
+    if (num >= 1e6) return `${(num / 1e6).toFixed(1)}M`  // Million
+    if (num >= 1e3) return `${(num / 1e3).toFixed(1)}K`  // Thousand
+    
+    // For smaller numbers, show more precision
+    if (num >= 1) return num.toFixed(2)
+    if (num >= 0.01) return num.toFixed(4)
+    return num.toFixed(6)
   }
 
   if (loading) {
@@ -191,7 +201,7 @@ export function ActivityFeed({ address }: ActivityFeedProps) {
                   <span className="text-sm font-mono">{shortAddress}</span>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-semibold">{amount} tokens</div>
+                  <div className="text-sm font-semibold">{amount}</div>
                   <div className="text-xs text-muted-foreground">
                     {timeAgo}
                   </div>

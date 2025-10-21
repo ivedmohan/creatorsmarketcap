@@ -18,10 +18,11 @@ export async function GET(
     const swapData = await zoraClient.getCoinSwaps(resolvedParams.address, 100)
     const swaps = swapData.swaps || []
 
-    console.log(`📊 Price history API: Found ${swaps.length} swaps for ${resolvedParams.address}`)
-    if (swaps.length > 0) {
-      console.log('📊 Sample swap:', swaps[0])
-    }
+          console.log(`📊 Price history API: Found ${swaps.length} swaps for ${resolvedParams.address}`)
+          if (swaps.length > 0) {
+            console.log('📊 Sample swap:', swaps[0])
+            console.log('📊 All swap timestamps:', swaps.map(s => s.blockTimestamp))
+          }
 
     if (swaps.length === 0) {
       return NextResponse.json({
@@ -34,7 +35,7 @@ export async function GET(
     }
 
     // Generate price history from swaps
-    const pricePoints = await PriceCalculator.generatePriceHistory(swaps, resolvedParams.address)
+          const pricePoints = PriceCalculator.generatePriceHistory(swaps, resolvedParams.address)
     
     // Fetch ETH price history for USD conversion
     const ethPriceHistory = await PriceCalculator.fetchEthPriceHistory(days)
