@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowUpRight, ArrowDownRight } from "lucide-react"
+import { ArrowUpRight, ArrowDownRight, Wifi, WifiOff } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useRealtimeActivity, useWebSocket } from '@/hooks/useWebSocket'
 
 interface ActivityFeedProps {
   address: string
@@ -23,35 +24,49 @@ export function ActivityFeed({ address }: ActivityFeedProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const fetchActivities = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        const response = await fetch(`/api/coins/${address}?includeDetails=true`)
-        const data = await response.json()
-        
-        if (data.success && data.data?.recentSwaps) {
-          // Take the most recent 10 swaps
-          const recentSwaps = data.data.recentSwaps.slice(0, 10)
-          setActivities(recentSwaps)
-        } else {
-          setActivities([])
-        }
-      } catch (err) {
-        console.error('Failed to fetch activities:', err)
-        setError('Failed to load recent activity')
-        setActivities([])
-      } finally {
-        setLoading(false)
-      }
-    }
+  // Real-time data hooks
+  const { isConnected } = useWebSocket()
+  const { recentSwaps, lastUpdate, isLive } = useRealtimeActivity(address)
 
-    if (address) {
+  // Update activities when real-time data changes
+  useEffect(() => {
+    if (recentSwaps.length > 0) {
+      console.log(`📊 Updated activity feed with ${recentSwaps.length} real-time swaps`)
+      setActivities(recentSwaps.slice(0, 10)) // Take most recent 10
+      setLoading(false)
+      setError(null)
+    }
+  }, [recentSwaps])
+
+  // Fallback to API if no real-time data
+  useEffect(() => {
+    if (!isLive && address) {
+      const fetchActivities = async () => {
+        try {
+          setLoading(true)
+          setError(null)
+          
+          const response = await fetch(`/api/coins/${address}?includeDetails=true`)
+          const data = await response.json()
+          
+          if (data.success && data.data?.recentSwaps) {
+            const recentSwaps = data.data.recentSwaps.slice(0, 10)
+            setActivities(recentSwaps)
+          } else {
+            setActivities([])
+          }
+        } catch (err) {
+          console.error('Failed to fetch activities:', err)
+          setError('Failed to load recent activity')
+          setActivities([])
+        } finally {
+          setLoading(false)
+        }
+      }
+
       fetchActivities()
     }
-  }, [address])
+  }, [address, isLive])
 
   const formatTimeAgo = (timestamp: string | number) => {
     const now = Date.now()
@@ -127,7 +142,24 @@ export function ActivityFeed({ address }: ActivityFeedProps) {
   return (
     <Card className="glass-card border-white/10 rounded-2xl">
       <CardHeader>
-        <CardTitle>Recent Activity</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Recent Activity</CardTitle>
+          {isLive && (
+            <Badge variant="outline" className="flex items-center gap-1 text-xs">
+              {isConnected ? (
+                <>
+                  <Wifi className="w-3 h-3 text-green-500" />
+                  Live
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-3 h-3 text-red-500" />
+                  Offline
+                </>
+              )}
+            </Badge>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">

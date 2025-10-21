@@ -4,7 +4,10 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Badge } from "@/components/ui/badge"
+import { TrendingUp, TrendingDown, Wifi, WifiOff } from "lucide-react"
 import { Line } from "react-chartjs-2"
+import { useRealtimeChart, useWebSocket } from '@/hooks/useWebSocket'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -46,49 +49,64 @@ export function CoinChart({ address }: CoinChartProps) {
   const [chartData, setChartData] = useState<SwapData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Real-time data hooks
+  const { isConnected } = useWebSocket()
+  const { priceHistory, recentSwaps, lastUpdate, isLive } = useRealtimeChart(address)
 
+  // Update chart data when real-time data changes
   useEffect(() => {
-    const fetchChartData = async () => {
-      setLoading(true)
-      setError(null)
+    if (priceHistory.length > 0) {
+      const chartPoints = priceHistory.map((point: any) => ({
+        timestamp: point.timestamp,
+        price: point.price,
+        volume: point.volume,
+        type: point.type
+      }))
       
-      try {
-        // Fetch real price history from our new API
-        const response = await fetch(`/api/coins/${address}/price-history?timeframe=${timeframe}`)
-        const data = await response.json()
-        
-        console.log('📊 Price history API response:', data)
-        
-        if (data.success && data.data?.priceHistory) {
-          const priceHistory = data.data.priceHistory
-          
-          // Convert to chart format
-          const chartPoints = priceHistory.map((point: any) => ({
-            timestamp: point.timestamp,
-            price: point.price,
-            volume: point.volume,
-            type: point.type
-          }))
-          
-          console.log(`📈 Loaded ${chartPoints.length} real price points (${data.data.totalSwaps} swaps)`)
-          setChartData(chartPoints)
-        } else {
-          console.log('No price history data available')
-          setChartData([])
-        }
-      } catch (err) {
-        console.error('Failed to fetch price history:', err)
-        setError('Failed to load price history')
-        setChartData([])
-      } finally {
-        setLoading(false)
-      }
+      console.log(`📈 Updated chart with ${chartPoints.length} real-time price points`)
+      setChartData(chartPoints)
+      setLoading(false)
+      setError(null)
     }
+  }, [priceHistory])
 
-    if (address) {
+  // Fallback to API if no real-time data
+  useEffect(() => {
+    if (!isLive && address) {
+      const fetchChartData = async () => {
+        setLoading(true)
+        setError(null)
+        
+        try {
+          const response = await fetch(`/api/coins/${address}/price-history?timeframe=${timeframe}`)
+          const data = await response.json()
+          
+          if (data.success && data.data?.priceHistory) {
+            const chartPoints = data.data.priceHistory.map((point: any) => ({
+              timestamp: point.timestamp,
+              price: point.price,
+              volume: point.volume,
+              type: point.type
+            }))
+            
+            console.log(`📈 Loaded ${chartPoints.length} API price points`)
+            setChartData(chartPoints)
+          } else {
+            setChartData([])
+          }
+        } catch (err) {
+          console.error('Failed to fetch price history:', err)
+          setError('Failed to load price history')
+          setChartData([])
+        } finally {
+          setLoading(false)
+        }
+      }
+
       fetchChartData()
     }
-  }, [address, timeframe])
+  }, [address, timeframe, isLive])
 
   const chartOptions: ChartOptions<'line'> = {
     responsive: true,
@@ -216,7 +234,24 @@ export function CoinChart({ address }: CoinChartProps) {
     <Card className="glass-card border-white/10 rounded-2xl">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Price Chart</CardTitle>
+          <div className="flex items-center gap-3">
+            <CardTitle>Price Chart</CardTitle>
+            {isLive && (
+              <Badge variant="outline" className="flex items-center gap-1 text-xs">
+                {isConnected ? (
+                  <>
+                    <Wifi className="w-3 h-3 text-green-500" />
+                    Live
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="w-3 h-3 text-red-500" />
+                    Offline
+                  </>
+                )}
+              </Badge>
+            )}
+          </div>
           <div className="flex gap-2">
             {["24h", "7d", "30d", "1y"].map((tf) => (
               <Button

@@ -14,8 +14,8 @@ interface SearchBarProps {
 export function SearchBar({ onSearchChange, onSortChange }: SearchBarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [search, setSearch] = useState(searchParams.get("search") || "")
-  const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "mostValuable")
+  const [search, setSearch] = useState(searchParams?.get("search") || "")
+  const [sortBy, setSortBy] = useState(searchParams?.get("sortBy") || "mostValuable")
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [searchType, setSearchType] = useState<string>("")
 
