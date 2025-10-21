@@ -53,56 +53,33 @@ export function CoinChart({ address }: CoinChartProps) {
       setError(null)
       
       try {
-        // Fetch coin details which includes recent swap data
-        const response = await fetch(`/api/coins/${address}?includeDetails=true`)
+        // Fetch real price history from our new API
+        const response = await fetch(`/api/coins/${address}/price-history?timeframe=${timeframe}`)
         const data = await response.json()
         
-        console.log('Chart data response:', data)
+        console.log('📊 Price history API response:', data)
         
-        const coin = data.data?.coin
-        const swaps = data.data?.recentSwaps || []
-        
-        // If we have swaps and coin price data, generate chart
-        if (swaps.length > 0 && coin) {
-          const currentPrice = coin.currentPrice || 0
-          const priceChange24h = coin.priceChange24h || 0
+        if (data.success && data.data?.priceHistory) {
+          const priceHistory = data.data.priceHistory
           
-          // Calculate price 24h ago
-          const price24hAgo = currentPrice / (1 + priceChange24h / 100)
+          // Convert to chart format
+          const chartPoints = priceHistory.map((point: any) => ({
+            timestamp: point.timestamp,
+            price: point.price,
+            volume: point.volume,
+            type: point.type
+          }))
           
-          // Create synthetic price data from swap timestamps
-          // We'll interpolate prices between 24h ago and current price
-          const chartPoints = swaps
-            .map((swap: any, index: number) => {
-              const timestamp = typeof swap.blockTimestamp === 'string' 
-                ? new Date(swap.blockTimestamp).getTime()
-                : swap.blockTimestamp * 1000
-              
-              // Interpolate price based on time position
-              const now = Date.now()
-              const timeAgo24h = now - (24 * 60 * 60 * 1000)
-              const timeProgress = (timestamp - timeAgo24h) / (now - timeAgo24h)
-              const interpolatedPrice = price24hAgo + (currentPrice - price24hAgo) * timeProgress
-              
-              return {
-                timestamp,
-                price: interpolatedPrice > 0 ? interpolatedPrice : currentPrice,
-                volume: parseFloat(swap.coinAmount || '0'),
-                type: swap.activityType
-              }
-            })
-            .filter((point: SwapData) => point.price > 0 && point.timestamp > 0)
-            .sort((a: SwapData, b: SwapData) => a.timestamp - b.timestamp) // Oldest first
-          
-          console.log(`Chart: Generated ${chartPoints.length} price points from ${swaps.length} swaps`)
+          console.log(`📈 Loaded ${chartPoints.length} real price points (${data.data.totalSwaps} swaps)`)
           setChartData(chartPoints)
         } else {
-          console.log('No swap data or coin data available')
+          console.log('No price history data available')
           setChartData([])
         }
       } catch (err) {
-        console.error('Failed to fetch chart data:', err)
-        setError('Failed to load chart data')
+        console.error('Failed to fetch price history:', err)
+        setError('Failed to load price history')
+        setChartData([])
       } finally {
         setLoading(false)
       }
@@ -263,10 +240,10 @@ export function CoinChart({ address }: CoinChartProps) {
         ) : chartData.length === 0 ? (
           <div className="h-[300px] flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 to-chart-4/5 rounded-xl border border-white/5 p-8 text-center">
             <p className="text-muted-foreground text-sm">
-              No recent trading data available for this coin
+              No trading data available for this coin
             </p>
             <p className="text-xs text-muted-foreground mt-2 opacity-60">
-              Chart will appear once trading activity is recorded
+              Real price history will appear once trading activity is recorded
             </p>
           </div>
         ) : (

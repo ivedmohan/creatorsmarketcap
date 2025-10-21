@@ -30,9 +30,6 @@ export function HoldersList({ address }: HoldersListProps) {
         const data = await response.json()
         
         if (data.success && data.data?.holders) {
-          // Debug: Log the actual data structure
-          console.log('Holders data structure:', data.data.holders)
-          
           // Calculate total supply for percentage calculation
           const totalSupply = data.data.holders.reduce((sum: number, holder: any) => {
             return sum + parseFloat(holder.balance || '0')
@@ -50,10 +47,8 @@ export function HoldersList({ address }: HoldersListProps) {
             }
           })
           
-          console.log('Processed holders:', topHolders)
           setHolders(topHolders)
         } else {
-          console.log('No holders data found:', data)
           setHolders([])
         }
       } catch (err) {
